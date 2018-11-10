@@ -6,9 +6,9 @@
 #include "recvroute.h"
 #include <pthread.h>
 
+
 #define IP_HEADER_LEN sizeof(struct ip)
 #define ETHER_HEADER_LEN sizeof(struct ether_header)
-
 
 //接收路由信息的线程
 void *thr_fn(void *arg)
@@ -44,11 +44,13 @@ void *thr_fn(void *arg)
 
 				{
 					//插入到路由表里
+					insert_route(selfrt->prefix.s_addr, selfrt->prefixlen, selfrt->ifname, selfrt->ifindex, selfrt->nexthop.s_addr);
 				}
 			}
 			else if(selfrt->cmdnum == 25)
 			{
 				//从路由表里删除路由
+				delete_route(selfrt->prefix.s_addr, selfrt->prefixlen);
 			}
 		}
 
@@ -56,60 +58,115 @@ void *thr_fn(void *arg)
 
 }
 
-int main()	
+int main()
 {
 	char skbuf[1500];
 	char data[1480];
-	int recvfd,datalen;
-	int recvlen;		
+	int recvfd, datalen;
+	int recvlen;
 	struct ip *ip_recvpkt;
 	pthread_t tid;
 	ip_recvpkt = (struct ip*)malloc(sizeof(struct ip));
 
 	//创建raw socket套接字
-	if((recvfd=socket(AF_PACKET,SOCK_RAW,htons(ETH_P_IP)))==-1)	
+	if ((recvfd = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_IP))) == -1)
 	{
 		printf("recvfd() error\n");
 		return -1;
-	}	
-	
-	//路由表初始化
-	route_table=(struct route*)malloc(sizeof(struct route));
-
-	if(route_table==NULL)
-	{
-			printf("malloc error!!\n");
-			return -1;
 	}
-	memset(route_table,0,sizeof(struct route));
+
+	//路由表初始化
+	route_table = (struct route*)malloc(sizeof(struct route));
+
+	if (route_table == NULL)
+	{
+		printf("malloc error!!\n");
+		return -1;
+	}
+	memset(route_table, 0, sizeof(struct route));
 	printf("before insert\n");
 
+
 	{
-		
 	//调用添加函数insert_route往路由表里添加直连路由
-		insert_route(0x305a8c0, 24, "eth1", 4, 0x204a8c0);
-		insert_route(0x365a8c0, 24, "eth2", 4, 0x204a8c0);
-		insert_route(0x308a8c0, 24, "eth3", 4, 0x204a8c0);
-		insert_route(0x343a8c0, 24, "eth4", 4, 0x204a8c0);
-		insert_route(0x324a8c0, 24, "eth5", 4, 0x204a8c0);
-		check_route_table();
-
-		struct in_addr tmp;
-		struct nextaddr *nexthopinfo;
-		nexthopinfo = (struct nextaddr *)malloc(sizeof(struct nextaddr));
-		memset(nexthopinfo,0,sizeof(struct nextaddr));
-		
-		tmp.s_addr = 0x343a8c0;
-		lookup_route(tmp, nexthopinfo);
-		tmp.s_addr = 0x324a8c0;
-		lookup_route(tmp, nexthopinfo);
-		tmp.s_addr = 0x34458c0;
-		lookup_route(tmp, nexthopinfo);
-		tmp.s_addr = 0x308a8c0;
-		lookup_route(tmp, nexthopinfo);
+	insert_route(0x305a8c0, 24, "eth1", 4, 0x204a8c0);
+	insert_route(0x365a8c0, 24, "eth2", 4, 0x204a8c0);
+	insert_route(0x308a8c0, 24, "eth3", 4, 0x204a8c0);
+	insert_route(0x343a8c0, 24, "eth4", 4, 0x204a8c0);
+	insert_route(0x324a8c0, 24, "eth5", 4, 0x204a8c0);
+	//check_route_table();
 
 
-	}
+	struct in_addr tmp2;
+	tmp2.s_addr = 0x365a8c0;
+	delete_route(tmp2, 20);
+	delete_route(tmp2, 24);
+
+	tmp2.s_addr = 0x324a8c0;
+	delete_route(tmp2, 24);
+	tmp2.s_addr = 0x324a8c0;
+	delete_route(tmp2, 24);
+	//check_route_table();
+
+
+	struct in_addr tmp;
+	struct nextaddr *nexthopinfo;
+	nexthopinfo = (struct nextaddr *)malloc(sizeof(struct nextaddr));
+	memset(nexthopinfo,0,sizeof(struct nextaddr));
+	
+	tmp.s_addr = 0x343a8c0;
+	lookup_route(tmp, nexthopinfo);
+	tmp.s_addr = 0x324a8c0;
+	lookup_route(tmp, nexthopinfo);
+	tmp.s_addr = 0x34458c0;
+	lookup_route(tmp, nexthopinfo);
+	tmp.s_addr = 0x308a8c0;
+	lookup_route(tmp, nexthopinfo);
+}
+
+		struct _iphdr *iphead;
+		int c = 0;
+
+		iphead = (struct _iphdr *)malloc(sizeof(struct _iphdr));
+
+		iphead->h_verlen = 0;
+		iphead->tos = 69;
+
+		iphead->total_len = 49;
+
+		iphead->ident = 35317;
+
+		iphead->frag = 0;
+
+		iphead->ttl = 6;
+		iphead->proto = 110;
+
+		iphead->checksum = 56632;
+
+		iphead->sourceIP = 3736552797;
+
+		iphead->destIP = 3232235740;
+		{
+			unsigned short oldcksum = iphead->checksum;
+			iphead->checksum = 0;
+			c = check_sum((unsigned short *)iphead, 20, oldcksum);
+			//调用校验函数check_sum，成功返回1
+		}
+		if (c == 1)
+		{
+			printf("checksum is ok!!\n");
+		}
+		else
+		{
+			printf("checksum is error !!\n");
+			return -1;
+		}
+
+		{
+			iphead->ttl--;
+			iphead->checksum = count_check_sum(iphead);
+			//调用计算校验和函数count_check_sum，返回新的校验和
+		}
 
 	//-------------------------------------------------------------------------------------------------------
 	////创建线程去接收路由信息
@@ -149,7 +206,10 @@ int main()
 	//				iphead=(struct _iphdr *)malloc(sizeof(struct _iphdr));
 	//				
 	//				{
-
+						//iphead = (struct ip *)(skbuf + ETHER_HEADER_LEN);
+						//unsigned short oldcksum = iphead->checksum;
+						//iphead->checksum = 0;
+						//c = check_sum((unsigned short *)iphead, 20, oldcksum);
 	//				//调用校验函数check_sum，成功返回1
 	//				}
 	//				if(c ==1)
@@ -162,7 +222,8 @@ int main()
 	//				}
 
 	//				{
-	//					
+							//iphead->ttl--;
+							//iphead->checksum = count_check_sum(iphead);
 	//				//调用计算校验和函数count_check_sum，返回新的校验和 
 	//				} 
 
@@ -174,6 +235,7 @@ int main()
 	//				{
 	//					
 	//				//调用查找路由函数lookup_route，获取下一跳ip地址和出接口
+						//lookup_route(iphead->destIP, nexthopinfo);
 	//				}
 
 	//				
@@ -184,6 +246,8 @@ int main()
 	//				{
 	//					
 	//				//调用arpGet获取下一跳的mac地址		
+						inet_pton(AF_INET, &(ip_recv_header->ip_src.s_addr), ip_addr_from, INET_ADDRSTRLEN);
+						arpGet(srcmac,nexthopinfo->ifname,);
 	//				}
 
 	//				//send ether icmp

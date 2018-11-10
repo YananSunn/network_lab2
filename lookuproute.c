@@ -31,7 +31,6 @@ int lookup_route(struct in_addr dstaddr,struct nextaddr *nexthopinfo)
 	//check_node(p->next);
 	while (p != NULL) {
 		if (p->ip4prefix.s_addr == dstaddr.s_addr) {
-			check_node(p->next);
 			printf("find\n");
 			nexthopinfo->ifname = p->nexthop->ifname;
 			nexthopinfo->prefixl = p->nexthop->ifindex;
@@ -50,11 +49,35 @@ int delete_route(struct in_addr dstaddr,unsigned int prefixlen)
 {
 	printf("------------------------------\n");
 	printf("delete_route()\n");
-	struct route *p = route_table;
-	
+	struct route *bp = route_table;
+	struct route *p = route_table->next;
+	while (p != NULL) {
+		if (p->ip4prefix.s_addr == dstaddr.s_addr) {
+			printf("find dstaddr\n");
+			if (p->prefixlen == prefixlen) {
+				printf("find prefixlen\n");
+
+				bp->next = p->next;
+				free(p);
+				printf("delete successfully\n");
+				return 1;
+			}
+			else {
+				p = p->next;
+				bp = bp->next;
+			}
+		}
+		else {
+			p = p->next;
+			bp = bp->next;
+		}
+	}
+	printf("not find, can not delete\n");
+	return 0;
 }
 
 void check_route_table() {
+	printf("------------------------------\n");
 	printf("------------------------------\n");
 	printf("check_route_table()\n");
 	struct route *p = route_table;
@@ -62,6 +85,8 @@ void check_route_table() {
 		check_node(p->next);
 		p = p->next;
 	}
+	printf("------------------------------\n");
+	printf("------------------------------\n");
 }
 
 void check_node(struct route* p){
