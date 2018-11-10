@@ -246,8 +246,8 @@ int main()
 	//				{
 	//					
 	//				//调用arpGet获取下一跳的mac地址		
-						inet_pton(AF_INET, &(ip_recv_header->ip_src.s_addr), ip_addr_from, INET_ADDRSTRLEN);
-						arpGet(srcmac,nexthopinfo->ifname,);
+						inet_ntop(AF_INET, &(ip_recv_header->ip_src.s_addr), ip_addr_from, INET_ADDRSTRLEN);
+						arpGet(srcmac,nexthopinfo->ifname, ip_addr_from);
 	//				}
 
 	//				//send ether icmp
