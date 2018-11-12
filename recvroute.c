@@ -14,5 +14,4 @@ int static_route_get(struct selfroute *selfrt)
 //	char ifname[10];
 	//printf("static_rout_get()");
 	//printf("prefixlen = %d", *selfrt->prefixlen);
-
 }
